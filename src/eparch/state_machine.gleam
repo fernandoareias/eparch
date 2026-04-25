@@ -38,6 +38,7 @@ pub opaque type Builder(state, data, message, return, reply) {
     state_enter: StateEnter,
     initialisation_timeout: Int,
     name: Option(process.Name(message)),
+    hibernate_after: Option(Int),
     on_code_change: Option(fn(data) -> data),
     on_format_status: Option(
       fn(Status(state, data, message, reply)) ->
@@ -344,6 +345,7 @@ pub fn new(
     state_enter: StateEnterDisabled,
     initialisation_timeout: 1000,
     name: None,
+    hibernate_after: None,
     on_code_change: None,
     on_format_status: None,
   )
@@ -425,6 +427,13 @@ pub fn named(
   name: process.Name(message),
 ) -> Builder(state, data, message, return, reply) {
   Builder(..builder, name: Some(name))
+}
+
+pub fn hibernate_after(
+  builder: Builder(state, data, message, return, reply),
+  milliseconds: Int,
+) -> Builder(state, data, message, return, reply) {
+  Builder(..builder, hibernate_after: Some(milliseconds))
 }
 
 /// Provide a migration function called during hot-code upgrades.
@@ -517,6 +526,7 @@ pub fn start(
     state_enter:,
     initialisation_timeout:,
     name:,
+    hibernate_after:,
     on_code_change:,
     on_format_status:,
   ) = builder
@@ -527,6 +537,7 @@ pub fn start(
     state_enter,
     initialisation_timeout,
     name,
+    hibernate_after,
     on_code_change,
     on_format_status,
   )
@@ -541,6 +552,7 @@ fn do_start(
   state_enter: StateEnter,
   initialisation_timeout: Int,
   name: Option(process.Name(message)),
+  hibernate_after: Option(Int),
   on_code_change: Option(fn(data) -> data),
   on_format_status: Option(
     fn(Status(state, data, message, reply)) ->
