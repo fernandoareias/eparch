@@ -205,10 +205,11 @@ pub type TimeoutType {
   GenericTimeoutType(name: String)
 }
 
-/// The event type used when injecting synthetic events with `inject_event`.
-///
-pub type SyntheticEventType(reply) {
-  /// Delivered as an internal event (same as `NextEvent`)
+/// Mirrors gen_statem's event_type/0 so a single NextEvent can inject any
+/// kind of synthetic event into the state machine.
+/// https://www.erlang.org/doc/apps/stdlib/gen_statem.html#t:event_type/0
+pub type NextEventType(reply) {
+  /// Delivered as an internal event
   InternalEvent
   /// Delivered as a cast event
   CastEvent
