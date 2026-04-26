@@ -632,7 +632,7 @@ pub fn update_generic_timeout(
   name: String,
   content: message,
 ) -> Action(message, reply) {
-  UpdateGenericTimeout(name: name, content: content)
+  UpdateGenericTimeout(name:, content:)
 }
 
 /// Create a ChangeCallbackModule action.
