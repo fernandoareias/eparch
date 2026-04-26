@@ -214,6 +214,17 @@ pub fn new_handler(
     on_terminate: None,
     on_format_status: None,
   )
+pub fn new_handler(
+  initial_state: state,
+  handler: fn(event, state) -> EventStep(state),
+) -> Handler(state, event, Nil, Nil) {
+  Handler(
+    init_state: initial_state,
+    on_event: handler,
+    on_call: None,
+    on_terminate: None,
+    on_format_status: None,
+  )
 }
 
 /// Attach a cleanup function called when the handler is removed or the manager
