@@ -161,7 +161,9 @@ pub type Action(message, reply) {
   Postpone
 
   /// Insert a new event at the front of the queue
-  NextEvent(content: message)
+  /// Inject a synthetic event of any kind that gen_statem accepts.
+  /// Mirrors gen_statem:event_type/0.
+  NextEvent(event_type: NextEventType(reply), content: message)
 
   /// Set a state timeout (canceled on state change)
   StateTimeout(milliseconds: Int)
