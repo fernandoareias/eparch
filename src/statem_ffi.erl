@@ -462,8 +462,32 @@ convert_step_to_erlang(GleamStep, GleamStatem) ->
                 [] -> {keep_state, NewGleamStatem};
                 _ -> {keep_state, NewGleamStatem, Actions}
             end;
+        {keep_state_and_data, GleamActions} ->
+            Actions = convert_actions_to_erlang(GleamActions),
+            case Actions of
+                [] -> keep_state_and_data;
+                _ -> {keep_state_and_data, Actions}
+            end;
+        {repeat_state, NewData, GleamActions} ->
+            Actions = convert_actions_to_erlang(GleamActions),
+            NewGleamStatem = GleamStatem#gleam_statem{
+                gleam_data = NewData
+            },
+            case Actions of
+                [] -> {repeat_state, NewGleamStatem};
+                _ -> {repeat_state, NewGleamStatem, Actions}
+            end;
+        {repeat_state_and_data, GleamActions} ->
+            Actions = convert_actions_to_erlang(GleamActions),
+            case Actions of
+                [] -> repeat_state_and_data;
+                _ -> {repeat_state_and_data, Actions}
+            end;
         {stop, Reason} ->
-            {stop, convert_exit_reason(Reason)}
+            {stop, convert_exit_reason(Reason)};
+        {stop_and_reply, Reason, GleamActions} ->
+            Replies = convert_actions_to_erlang(GleamActions),
+            {stop_and_reply, convert_exit_reason(Reason), Replies}
     end.
 
 convert_actions_to_erlang(GleamActions) ->
@@ -493,6 +517,14 @@ convert_action_to_erlang(Action) ->
             {state_timeout, Milliseconds, timeout};
         {generic_timeout, Name, Milliseconds} ->
             {{timeout, Name}, Milliseconds, timeout};
+        cancel_state_timeout ->
+            {state_timeout, cancel};
+        {cancel_generic_timeout, Name} ->
+            {{timeout, Name}, cancel};
+        {update_state_timeout, Content} ->
+            {state_timeout, update, Content};
+        {update_generic_timeout, Name, Content} ->
+            {{timeout, Name}, update, Content};
         {change_callback_module, Module} ->
             {change_callback_module, Module};
         {push_callback_module, Module} ->

@@ -142,11 +142,25 @@ pub type Step(state, data, message, reply) {
   /// Transition to a new state
   NextState(state: state, data: data, actions: List(Action(message, reply)))
 
-  /// Keep the current state
+  /// Keep the current state, updating data
   KeepState(data: data, actions: List(Action(message, reply)))
+
+  /// Keep the current state without re-specifying data (OTP optimization).
+  KeepStateAndData(actions: List(Action(message, reply)))
+
+  /// Re-enter the current state with new data, re-triggering the state_enter
+  /// callback if enabled.
+  RepeatState(data: data, actions: List(Action(message, reply)))
+
+  /// Re-enter the current state without changing data.
+  RepeatStateAndData(actions: List(Action(message, reply)))
 
   /// Stop the state machine
   Stop(reason: ExitReason)
+
+  /// Stop the state machine and atomically send replies to pending callers.
+  /// Only `Reply(from, response)` actions are valid in the replies list.
+  StopAndReply(reason: ExitReason, replies: List(Action(message, reply)))
 }
 
 /// Actions (side effects) to perform after handling an event.
@@ -180,10 +194,21 @@ pub type Action(message, reply) {
   /// Postpone this event until after a state change.
   Postpone
 
-  /// Inject a synthetic event with a specific event type.
-  /// Unlike `NextEvent` (always internal), this lets you inject cast,
-  /// info, or call events into the event queue.
-  InjectEvent(event_type: SyntheticEventType(reply), content: message)
+  /// Cancel the running state timeout before it fires.
+  /// Since OTP 22.1.
+  CancelStateTimeout
+
+  /// Cancel a running named generic timeout before it fires.
+  /// Since OTP 22.1.
+  CancelGenericTimeout(name: String)
+
+  /// Update the payload delivered when the state timeout fires,
+  /// without restarting the timer. Since OTP 22.1.
+  UpdateStateTimeout(content: message)
+
+  /// Update the payload delivered when a named generic timeout fires,
+  /// without restarting the timer. Since OTP 22.1.
+  UpdateGenericTimeout(name: String, content: message)
 
   /// Change the gen_statem callback module to `module`.
   /// The new module receives the internal `#gleam_statem` record as its data,
@@ -560,6 +585,35 @@ pub fn keep_state(
   KeepState(data:, actions:)
 }
 
+/// Keep the current state without re-specifying data.
+///
+/// Use instead of `keep_state` when data has not changed, to avoid
+/// an unnecessary copy in the `#gleam_statem` record.
+///
+pub fn keep_state_and_data(
+  actions: List(Action(message, reply)),
+) -> Step(state, data, message, reply) {
+  KeepStateAndData(actions: actions)
+}
+
+/// Re-enter the current state with new data, re-triggering the state_enter
+/// callback if enabled.
+///
+pub fn repeat_state(
+  data: data,
+  actions: List(Action(message, reply)),
+) -> Step(state, data, message, reply) {
+  RepeatState(data: data, actions: actions)
+}
+
+/// Re-enter the current state without changing data.
+///
+pub fn repeat_state_and_data(
+  actions: List(Action(message, reply)),
+) -> Step(state, data, message, reply) {
+  RepeatStateAndData(actions: actions)
+}
+
 /// Create a Stop step indicating the state machine should terminate.
 ///
 /// ## Example
@@ -570,6 +624,17 @@ pub fn keep_state(
 ///
 pub fn stop(reason: ExitReason) -> Step(state, data, message, reply) {
   Stop(reason:)
+}
+
+/// Stop the state machine and atomically send replies to pending callers.
+///
+/// Only `Reply(from, response)` actions are valid in the `replies` list.
+///
+pub fn stop_and_reply(
+  reason: ExitReason,
+  replies: List(Action(message, reply)),
+) -> Step(state, data, message, reply) {
+  StopAndReply(reason: reason, replies: replies)
 }
 
 /// Create a Reply action.
@@ -595,12 +660,25 @@ pub fn postpone() -> Action(message, reply) {
   Postpone
 }
 
+/// Hibernate the process after this callback returns.
+///
+pub fn hibernate() -> Action(message, reply) {
+  Hibernate
+}
+
+pub fn postpone() -> Action(message, reply) {
+  Postpone
+}
+
 /// Create a NextEvent action.
 ///
 /// Inserts a new event at the front of the event queue.
 ///
-pub fn next_event(content: message) -> Action(message, reply) {
-  NextEvent(content:)
+pub fn next_event(
+  event_type: NextEventType(reply),
+  content: message,
+) -> Action(message, reply) {
+  NextEvent(event_type:, content:)
 }
 
 /// Create a StateTimeout action.
@@ -622,26 +700,31 @@ pub fn generic_timeout(
   GenericTimeout(name:, milliseconds:)
 }
 
-/// Hibernate the process after this callback returns.
+/// Cancel the running state timeout before it fires.
 ///
-pub fn hibernate() -> Action(message, reply) {
-  Hibernate
+pub fn cancel_state_timeout() -> Action(message, reply) {
+  CancelStateTimeout
 }
 
-pub fn postpone() -> Action(message, reply) {
-  Postpone
+/// Cancel a running named generic timeout before it fires.
+///
+pub fn cancel_generic_timeout(name: String) -> Action(message, reply) {
+  CancelGenericTimeout(name:)
 }
 
-/// Inject a synthetic event with an explicit event type.
+/// Update the payload of the running state timeout without restarting the timer.
 ///
-/// Unlike `next_event` (always internal), this lets you inject cast,
-/// info, or call events into the event queue.
+pub fn update_state_timeout(content: message) -> Action(message, reply) {
+  UpdateStateTimeout(content:)
+}
+
+/// Update the payload of a running named generic timeout without restarting the timer.
 ///
-pub fn inject_event(
-  event_type: SyntheticEventType(reply),
+pub fn update_generic_timeout(
+  name: String,
   content: message,
 ) -> Action(message, reply) {
-  InjectEvent(event_type: event_type, content: content)
+  UpdateGenericTimeout(name:, content:)
 }
 
 /// Create a ChangeCallbackModule action.
