@@ -499,8 +499,6 @@ convert_action_to_erlang(Action) ->
             %% Reply to a gen_statem:call caller.
             %% From is the external type, the raw gen_statem:from() term.
             {reply, From, Response};
-        postpone ->
-            postpone;
         hibernate ->
             hibernate;
         postpone ->
