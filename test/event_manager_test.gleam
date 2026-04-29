@@ -507,24 +507,6 @@ pub fn wait_response_returns_same_reply_as_receive_response_test() {
   event_manager.stop(mgr)
 }
 
-pub fn receive_response_errors_when_handler_has_no_on_call_test() {
-  let assert Ok(mgr) = event_manager.start()
-
-  let handler =
-    event_manager.new_handler(0, fn(_event, state) {
-      event_manager.Continue(state)
-    })
-
-  let assert Ok(ref) = event_manager.add_handler(mgr, handler)
-
-  let req: event_manager.RequestId(Int) =
-    event_manager.send_request(mgr, ref, GetCount)
-  let assert Error(event_manager.RequestCrashed(_)) =
-    event_manager.receive_response(req, 1000)
-
-  event_manager.stop(mgr)
-}
-
 pub fn check_response_returns_check_no_reply_for_unrelated_message_test() {
   let assert Ok(mgr) = event_manager.start()
 

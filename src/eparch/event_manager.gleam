@@ -126,20 +126,20 @@ pub type MonitoredManager(event) {
 }
 
 /// Errors that can occur when adding a handler.
-pub type AddError {
+pub type AddError(request, reply) {
   /// A handler with the same identity is already registered. The field
   /// carries the `HandlerRef` that caused the collision.
-  HandlerAlreadyExists(handler_ref: HandlerRef)
+  HandlerAlreadyExists(handler_ref: HandlerRef(request, reply))
   /// The handler's initialisation failed. `reason` is a human-readable
   /// string produced from the raw Erlang error term.
   InitFailed(reason: String)
 }
 
 /// Errors that can occur when removing a handler.
-pub type RemoveError {
+pub type RemoveError(request, reply) {
   /// No handler with the given ref is currently registered. The field
   /// carries the `HandlerRef` the caller supplied.
-  HandlerNotFound(handler_ref: HandlerRef)
+  HandlerNotFound(handler_ref: HandlerRef(request, reply))
   /// Removal failed for another reason.
   RemoveFailed(reason: String)
 }
@@ -165,7 +165,11 @@ pub opaque type Handler(state, event, request, reply) {
 /// `add_supervised_handler`. Pass them to `remove_handler` to unregister a
 /// specific handler, or compare them with values returned by `which_handlers`.
 ///
-pub type HandlerRef
+/// The phantom `request`/`reply` parameters track the call protocol of the
+/// handler, so `send_request` cannot be called with a mismatched request type.
+/// Handlers without a call protocol carry `Nil`/`Nil`.
+///
+pub type HandlerRef(request, reply)
 
 /// An opaque reference to a running event manager process.
 ///
@@ -439,16 +443,16 @@ fn do_manager_pid(manager: Manager(event)) -> Pid
 ///
 pub fn add_handler(
   manager: Manager(event),
-  handler: Handler(state, event),
-) -> Result(HandlerRef, AddError) {
+  handler: Handler(state, event, request, reply),
+) -> Result(HandlerRef(request, reply), AddError(request, reply)) {
   do_add_handler(manager, handler)
 }
 
 @external(erlang, "event_manager_ffi", "do_add_handler")
 fn do_add_handler(
   manager: Manager(event),
-  handler: Handler(state, event),
-) -> Result(HandlerRef, AddError)
+  handler: Handler(state, event, request, reply),
+) -> Result(HandlerRef(request, reply), AddError(request, reply))
 
 /// Register a supervised handler with the event manager.
 ///
@@ -466,16 +470,16 @@ fn do_add_handler(
 ///
 pub fn add_supervised_handler(
   manager: Manager(event),
-  handler: Handler(state, event),
-) -> Result(HandlerRef, AddError) {
+  handler: Handler(state, event, request, reply),
+) -> Result(HandlerRef(request, reply), AddError(request, reply)) {
   do_add_supervised_handler(manager, handler)
 }
 
 @external(erlang, "event_manager_ffi", "do_add_sup_handler")
 fn do_add_supervised_handler(
   manager: Manager(event),
-  handler: Handler(state, event),
-) -> Result(HandlerRef, AddError)
+  handler: Handler(state, event, request, reply),
+) -> Result(HandlerRef(request, reply), AddError(request, reply))
 
 /// Remove a specific handler from the event manager.
 ///
@@ -483,25 +487,29 @@ fn do_add_supervised_handler(
 ///
 pub fn remove_handler(
   manager: Manager(event),
-  handler_ref: HandlerRef,
-) -> Result(Nil, RemoveError) {
+  handler_ref: HandlerRef(request, reply),
+) -> Result(Nil, RemoveError(request, reply)) {
   do_remove_handler(manager, handler_ref)
 }
 
 @external(erlang, "event_manager_ffi", "do_remove_handler")
 fn do_remove_handler(
   manager: Manager(event),
-  handler_ref: HandlerRef,
-) -> Result(Nil, RemoveError)
+  handler_ref: HandlerRef(request, reply),
+) -> Result(Nil, RemoveError(request, reply))
 
 /// Return the list of `HandlerRef`s for all currently registered handlers.
 ///
-pub fn which_handlers(manager: Manager(event)) -> List(HandlerRef) {
+pub fn which_handlers(
+  manager: Manager(event),
+) -> List(HandlerRef(request, reply)) {
   do_which_handlers(manager)
 }
 
 @external(erlang, "event_manager_ffi", "do_which_handlers")
-fn do_which_handlers(manager: Manager(event)) -> List(HandlerRef)
+fn do_which_handlers(
+  manager: Manager(event),
+) -> List(HandlerRef(request, reply))
 
 // ---------------------------------------------------------------------------
 // Notifications
