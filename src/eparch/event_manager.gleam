@@ -282,10 +282,10 @@ pub fn on_format_status(
 /// ```
 ///
 pub fn with_call_handler(
-  handler: Handler(state, event),
+  handler: Handler(state, event, _, _),
   on_call: fn(request, state) -> #(reply, state),
-) -> Handler(state, event) {
-  Handler(..handler, on_call: Some(coerce(on_call)))
+) -> Handler(state, event, request, reply) {
+  Handler(..handler, on_call: Some(on_call))
 }
 
 @external(erlang, "gleam_stdlib", "identity")
